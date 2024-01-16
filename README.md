@@ -27,3 +27,5 @@ After activating a script, unless that script is designed to run through its pro
     Examples
 
 The AutoHotkey .zip comes with many examples of complete scripts to serve as a guide, and the documentation provides many examples as well.
+
+The files in ./Complete are working scripts.
