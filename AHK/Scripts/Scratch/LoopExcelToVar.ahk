@@ -12,6 +12,9 @@ endRow := A_Args[6]
 startCol := A_Args[7]
 endCol := A_Args[8]
 
+
+; ==============  INITIALIZATION  ===============================================================
+; ===============================================================================================
 ; Check if the arguments are provided
 if A_Args.Length() < 8 {
     MsgBox("Please provide the required arguments (xlPath, xlSheet, logPath, workingDir"
@@ -27,6 +30,13 @@ noLogBool := false
 logOpenBool := false
 firstPassBool := true
 
+; Determine number of columns and rows, to allow standardization to an array with
+; a lower bound of 1.
+nRow := endRow - startRow + 1
+nCol := endCol - startCol + 1
+
+; ==============  INITIALIZE LOG  ===============================================================
+; ===============================================================================================
 ; Ensure the log is writeable
 InitializeLog(callPrc := "") {
     try {
@@ -36,7 +46,8 @@ InitializeLog(callPrc := "") {
         }
     }
     catch as err {
-        iB.result := InputBox("There was an error accessing the log. Attempt to create a new one?", "Error 001", "No")
+        iB.result := InputBox("There was an error accessing the log. Attempt to create a new one?"
+            , "Error 001", "No")
         if iB.result = "Yes" {
             try {
                 logFile := FileOpen(logPath, "rw")
@@ -44,7 +55,8 @@ InitializeLog(callPrc := "") {
                     throw "Unable to create file"
                 }
                 catch as err {
-                    MsgBox("Unable to create log file. Please check the file path and directory permissions. Exiting the script.")
+                    MsgBox("Unable to create log file. Please check the file path and directory" & 
+                            , permissions. Exiting the script.")
                     ExitApp
                 }
                 Else { 
@@ -73,9 +85,11 @@ InitializeLog(callPrc := "") {
     return 1
 }
 
-;;; Functions---------------
+; ==============  FUNCTIONS =====================================================================
+; ===============================================================================================
 
-; Copy array to file  
+;--------------------------------------------------------------------------------------------------
+;-------------||__Copy array to file__||-----------------------------------------------------------
 CopyArray(array, callPrc := "") {
     If noLogBool {
         return
@@ -92,7 +106,8 @@ CopyArray(array, callPrc := "") {
             }
         }
         Catch as err {
-            MsgBox("Error 002. There was an error copying the array to file. Logging is disbaled until retart.")
+            MsgBox "(Error 002. There was an error copying the 
+                array to file. Logging is disbaled until retart.)"
             noLogBool := true
         }
     } 
@@ -102,17 +117,24 @@ ClearArray(array) {
     array := []
     return array
 }
+;-------------||^ Copy array to file ^||---------------------------------------------------------
+;------------------------------------------------------------------------------------------------
 
+;------------------------------------------------------------------------------------------------
+;-------------||__Generate array__||---------------------------------------------------------
 ; Determine number of columns and rows, to allow standardization to an array with
 ; a lower bound of 1.
-nRow := endRow - startRow + 1
-nCol := endCol - startCol + 1
+; nRow := endRow - startRow + 1
+; nCol := endCol - startCol + 1
 
 ; Call the function to create an array
 xlArray := array_n(nRow, nCol)
-
 !b::
 {
+
+
+;-------------||^ Generate array ^||-------------------------------------------------------------
+;------------------------------------------------------------------------------------------------
 
 
 ListVars
