@@ -182,23 +182,21 @@ class array_n extends array {
 ;------------------------------------------------------------------------------------------------
 
 ;------------------------------------------------------------------------------------------------
-;-------------||__Initialize Excel__||-------------------------------------------------------------
-        ; Initialize Excel COM object (or connect to an existing one)
+;-------------||__Get worksheet data__||---------------------------------------------------------
+%+s::
+(	; Initialize Excel COM object (or connect to an existing one)
         xl := ComObjCreate("Excel.Application") ; or ComObjActive("Excel.Application") to attach
-                                 ; to an existing instance
+						; to an existing instance
         xl.Visible := false
-ListVars
-Pause    
+
         ; Open the Excel workbook
         xl.Workbooks.Open(xlPath)
-ListVars
-Pause    
+
+
         ; Iterate from 1 to numCols
         For k, value in Range(1, numCols)
         {
-            ; Create a new array (sub-object) for each key
-            arrays[k] := []
-        
+
             ; Loop for Excel cells
             for cells in xl.Sheets(xlSheet).Range("Cells(" startRow ", " startCol + k - 1 "):Cells(" endRow ", " startCol + k - 1 ")")
                 arrays[k].Push(cells.Value)  
