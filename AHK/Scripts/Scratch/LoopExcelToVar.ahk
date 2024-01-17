@@ -5,18 +5,18 @@
 ; Get script parameters from arguments
 xlPath := A_Args[1]
 xlSheet := A_Args[2]
-logPath := A_Args[3]
+logPath := A_Args[3] 
 workingDir := A_Args[4]
 startRow := A_Args[5]
 endRow := A_Args[6]
 startCol := A_Args[7]
 endCol := A_Args[8]
-
+xlTextFiles := A_Args[9] ; Comma-delimited list of paths for the text files that the table will be recorded to
 
 ; ==============  INITIALIZATION  ===========================================================================
 ; ===========================================================================================================
 ; Check if the arguments are provided
-if A_Args.Length() < 8 {
+if A_Args.Length() < 9 {
     MsgBox("Please provide the required arguments (xlPath, xlSheet, logPath, workingDir"
     , "startRow, endRow, startCol, endCol).")
     ExitApp
@@ -34,6 +34,9 @@ firstPassBool := true
 ; a lower bound of 1.
 nRow := endRow - startRow + 1
 nCol := endCol - startCol + 1
+
+; Turn the comma-delimited list of paths into an array
+xlPathArray := StrSplit(xlTextFiles, ",")
 
 ; ==============  INITIALIZE LOG  ===========================================================================
 ; ===========================================================================================================
@@ -121,95 +124,31 @@ ClearArray(array) {
 ;------------------------------------------------------------------------------------------------
 
 ;------------------------------------------------------------------------------------------------
-;-------------||__Generate array__||-------------------------------------------------------------
-class array_n extends array {
-	; one-based multidimensional array
-	; Usage:
-	; new_array := array_n.new(dimensions*)
-	; dimensions, an array where item k indicates the size of dimension k.
-	; Maps any amount of indices to an index in an "underlying" linear array
-	; No bound checking is done on dimension level, out of bounds access on the
-    ; "underlying" linear array is detected automatically.
-	static base_index := 1 ; indicates one-based, subclasses can override this.
-	static __new() => this.prototype.class := this ; to allow subclasses to override base_index 
-	__new(dimensions*) {
-		; calculate the length of the "underlying" array
-		l := 1	
-		for length in dimensions
-			l *= length
-		this.length := l 			; sets the capacity of the linear "underlying" array
-		this.dim := dimensions		; store dimension sizes for proper index calculation
-	}
-	__item[indices*] {
-		; Access the underlying linear array:
-		get => super[ this.getIndex( indices ) ]				
-		set => super[ this.getIndex( indices ) ] := value
-	}
-	
-	getIndex(indices) {
-		; Calculates the index in the "underlying" linear array
-        linear_index 												; linear_index is the index to access in the underlying linear array. 
-        := base_index  												; To begin, pretend that the base index of the underlying array matches 
-			:= this.class.base_index 								; this base index.
-											
-		, dimension_offset := 1										; Start at the first "dimension offset"
-		, dim := this.dim 											; look up once
-		
-		; consider (without any regard to base_index): arr[x1, ..., xn] with bounds [d1, ..., dn]
-		; then we access underlying_arr[ xn
-		; + x{n-1} * dn
-		; + x{n-2} * dn * d{n-1}
-		; + ...
-		; + x1 * d2 * ... * dn ]
-		
-		; Note: if n < L := this.dim.length, then we do the same as above but with,
-		; arr[xk, ..., xL] with bounds [dk, ..., dL] where k := L - n - 1,
-		; in particular with n := 1, k becomes L and arr[x] will access underlying_arr[x]
-		; which implies that we can access arr[x] for all base_index <= x  < this.length + base_index
-		
-		loop n := indices.length
-			linear_index += (indices[ n ] - base_index)
-				* dimension_offset
-			, dimension_offset *= dim[ n-- ]	; dn * d{n-1} * ... * d2 
-												; (the last iteration will do dimension_offset *= d1 but it will not be used)
-
-		return linear_index	
-			- base_index	; compensate for the choosen base index
-			+ 1				; compensate for the "underlying" array being one-based
-	}
-}
-;-------------||^ Generate array ^||-------------------------------------------------------------
-;------------------------------------------------------------------------------------------------
-
-;------------------------------------------------------------------------------------------------
-;-------------||__Get worksheet data__||---------------------------------------------------------
+;-------------||__Get worksheet info__||---------------------------------------------------------
 %+s::
-(	; Initialize Excel COM object (or connect to an existing one)
-        xl := ComObjCreate("Excel.Application") ; or ComObjActive("Excel.Application") to attach
-						; to an existing instance
-        xl.Visible := false
-
-        ; Open the Excel workbook
-        xl.Workbooks.Open(xlPath)
-
-
-        ; Iterate from 1 to numCols
-        For k, value in Range(1, numCols)
-        {
-
-            ; Loop for Excel cells
-            for cells in xl.Sheets(xlSheet).Range("Cells(" startRow ", " startCol + k - 1 "):Cells(" endRow ", " startCol + k - 1 ")")
-                arrays[k].Push(cells.Value)  
-        }
-        
-        ; Function to generate a range of numbers (inclusive)
-        Range(start, end) {
-            range := []
-            Loop, % end - start + 1
-                range.Push(start + A_Index - 1)
-            return range
-        }
-        
+{			; Initialize Excel COM object (or connect to an existing one)
+	xl := ComObjCreate("Excel.Application") 	; or ComObjActive("Excel.Application") to attach
+	xl.Visible := False
+	workbook := xl.Workbooks.Open(xlPath) 
+	WorkSheet := xl.Worksheets(xlSheet).activate
+	; Loop through each column
+	For col := 1, colCount := nCol, col++
+	{
+		columnData := "" ; Reset columnData
+		For row := 1, rowCount, row++
+		{ 					; Read each cell in the column
+	        cellValue := sheet.Cells(row, col).Value
+	        columnData := columnData . cellValue . "`n" ; Append cell data with newline
+		    {
+			    ; Write the column data to a text file
+			    FileAppend columnData, xlPathArray[col] ; Change path as needed
+			}
+		}
+	}
+; Clean up: close Excel workbook, quit Excel application
+workbook.Close()
+xl.Quit()
+xl := ""
 }
 ;-------------||^ Initialize Excel ^||-------------------------------------------------------------
 ;------------------------------------------------------------------------------------------------
