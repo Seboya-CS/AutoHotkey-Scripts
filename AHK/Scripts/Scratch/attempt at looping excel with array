@@ -1,0 +1,48 @@
+; Create an array of the columns that we will be looping
+Columns := ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K"]
+; Create the data array
+teamsA := Array()
+teamsA.Capacity := nRow
+
+For Index, Column in Columns
+{
+	teamsA() := {} ; reset the array
+	for xlCell in xlApp.ActiveSheet.UsedRange.Columns(Column).Cells
+		teamsA[A_Index] := 
+
+		For cell in WorkSheet.Range("A" . A_Index . ":J" . A_Index) {
+		If (!cell.Text)
+			Exit ; Exits the thread, used instead of Break because I want to leave the outer loop?
+		MsgBox, % "Row:" . row . " Col:" . A_Index . " Value:" . cell.Text
+}
+}
+xl := ""
+Return
+
+
+		; Initialize Excel COM object (or connect to an existing one)
+        xl := ComObjCreate("Excel.Application") ; or ComObjActive("Excel.Application") to attach
+						; to an existing instance
+        xl.Visible := false
+
+        ; Open the Excel workbook
+        xl.Workbooks.Open(xlPath)
+
+
+        ; Iterate from 1 to numCols
+        For k, value in Range(1, numCols)
+        {
+
+            ; Loop for Excel cells
+            for cells in xl.Sheets(xlSheet).Range("Cells(" startRow ", " startCol + k - 1 "):Cells(" endRow ", " startCol + k - 1 ")")
+                arrays[k].Push(cells.Value)  
+        }
+        
+        ; Function to generate a range of numbers (inclusive)
+        Range(start, end) {
+            range := []
+            Loop, % end - start + 1
+                range.Push(start + A_Index - 1)
+            return range
+        }
+        
