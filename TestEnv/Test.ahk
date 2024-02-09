@@ -5,25 +5,40 @@
 xlPath := A_Args[1]
 xlSheet := A_Args[2]
 logPath := A_Args[3] 
-workingDir := A_Args[4]
+workingDir := CheckForSlash(A_Args[4])
 startRow := A_Args[5]
-endRow := A_Args[6]
+endRow := A_Args[6]	; Set this to `-1` to direct the script to get the last used row.
 startCol := A_Args[7]
-endCol := A_Args[8]
-xlTextFiles := A_Args[9] ; Comma-delimited list of paths for the text files that the table will be recorded to
+endCol := A_Args[8]		; Set this to `-1` to direct the script to get the last used column.
+xlTextFiles := A_Args[9]	; Comma-delimited list of paths for column data files.
+archiveDirectory := A_Args[10]	; Path to save old spreadsheet data or logs, if needed.
+															; Set this to "" to use the default archive directory.
 
 ; ~~~++++++++++++++++++++++++++
 ; 					Error codes								;++
 ; 001 - Unable to initialize log					;++
-; 002 - Unable to copy array to file			;++
+; 002 - Unable to copy array to file		;++
 
 ; ~~~++++++++++++++++++++++++;+
 
+; @@@		To dos		@@@+++++++++++++++++++++++++++++++++++++++++++++++++++++
+;	Complete the create archive / move files section, move it out of the current function its
+;		in, and modify it to be a standalone function that takes parameters and returns a boolean
+;	Review the create archive / move files function and review InitializeLog(), and make a
+;		decision if those should be broken down into their parts as a series of smaller functions.
+;	Add in support for setting endRow and endCol to -1 to default to last used row/column
+;	Create the user settings 
+;	Standardize style
+;	Switch absolute paths to relative paths in workingDir
+; @@@@@@@@@@@@++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-; ============== INITIALIZATION  ====================================================================
-; =================================================================================================
+
+; ==========================================================================
+; ==========		INITIALIZATION		===============================================
+; ==========================================================================
+
 ; Check if the arguments are provided
-if A_Args.capacity < 9 {
+if A_Args.capacity < 10 {
     MsgBox("Please provide the required arguments (xlPath, xlSheet, logPath, workingDir"
     , "startRow, endRow, startCol, endCol).")
     ExitApp
@@ -46,27 +61,28 @@ nCol := endCol - startCol + 1
 ; Turn the comma-delimited list of paths into an array
 xlPathArray := StrSplit(xlTextFiles, ",")
 
-; ==============  INITIALIZE LOG  ====================================================================
-; =================================================================================================
-InitializeLog(callingProcedure := "") {    	; The callingProcedure optional variable is for debugging
-    try {																; So I know what procedure called this procedure
+; ==========================================================================
+; ==========		INITIALIZE LOG		===============================================
+; ==========================================================================
+InitializeLog(callingProcedure := "") {    	; The `callingProcedure` variable is to know which
+    global logOpenBool									; procedure called the function, for debugging.
+	try {																	
         logFile := FileOpen(logPath, "a")
         if !logFile {
             throw "Unable to open file"
         }
-    }
-    catch as err {
-        result := InputBox("There was an error accessing the log. Attempt to create a new one?"
-            , "Error 001", "No")
-        if result = "Yes" {
+    } catch as err {
+        result := InputBox('There was an error accessing the log. Attempt to create a new one?'
+										' Submit "1" for yes. Submit anything else for no.', "Error 001", "1")
+        if result = "1" {
             try {
                 logFile := FileOpen(logPath, "rw")
                 if !logFile {
                     throw "Unable to create file"
                 }
-            }
-            catch as err {
-                MsgBox("Unable to create log file. Please check the file path and directory permissions. Exiting the script.")
+            } catch as err {
+                MsgBox('Unable to create log file. Please check the file path and directory'
+								' permissions. Exiting the script.')
                 ExitApp
             }
             MsgBox("Log file created successfully.")
@@ -91,36 +107,53 @@ InitializeLog(callingProcedure := "") {    	; The callingProcedure optional vari
     return 1
 }
 
-; =================================================================================================
-; =============== MISCELLANEOUS FUNCTIONS ========================================================
-; =================================================================================================
+; ==========================================================================
+; ==========		MISCELLANEOUS FUNCTIONS		=================================
+; ==========================================================================
 
-; -----------------------------------------------------------------------------------------------------------------
-; ---------								Update notifyGroupID						-------------------------------
-; -----------------------------------------------------------------------------------------------------------------
+; --------------------------------------------------------------------------------------------------------------	||
+; --------------------	Update notifyGroupID										 							||
+; --------------------------------------------------------------------------------------------------------------	||
 
-updateNotifyMsg(uChar, uRow, uUnchangedID)
+UpdateNotifyMsg(uChar, uRow, uUnchangedID)
 {
 	global notifyGroupID
-	If (notifyGroupID= "")
-	{
+	If (notifyGroupID= "") {
 		notifyGroupID :=  uChar . " was removed from row " . row . " . Group ID: " . uUnchangedID
 	} else {
 		notifyGroupID := { 
-										notifyGroupID . "; " . uChar . " was removed from row " . uRow . ". Group"
+										notifyGroupID . "`n" . uChar . " was removed from row " . uRow . ". Group"
 										" ID: " . uUnchangedID
 		}
 	}
 	return
 }
 						
+; --------------------------------------------------------------------------------------------------------------	||
+; --------------------	Check if a user-submitted path ends in "\"	 							||
+; --------------------------------------------------------------------------------------------------------------	||
 
-; =================================================================================================
-; ============== FILE READING FUNCTIONS ============================================================
-; =================================================================================================
+CheckForSlash(path)
+{
+	strL := StrLen(path)
+	lastChar := SubStr(path, strL, 1)
+	if (lastChar = "\") {
+		return(path)
+	} else {
+		return(path . "\")
+	}
+}
 
-;---------------------------------------------------------------------------------------------------------------
-;-------------||__Copy array to file__||---------------------------------------------------------------
+
+
+; ==========================================================================
+; ==========		FILE READING FUNCTIONS		=====================================
+; ==========================================================================
+
+; --------------------------------------------------------------------------------------------------------------	||
+; --------------------	Copy array to file 																			||
+; --------------------------------------------------------------------------------------------------------------	||
+
 CopyArray(array, callingProcedure := "") {
     If noLogBool {
         return
@@ -145,14 +178,66 @@ CopyArray(array, callingProcedure := "") {
     return
 }
 
-;-------------||^ Copy array to file ^||-----------------------------------------------------------------
-;---------------------------------------------------------------------------------------------------------------
-;         ||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
-;---------------------------------------------------------------------------------------------------------------
-;-------------||__Get worksheet info__||------------------------------------------------------------
+; --------------------------------------------------------------------------------------------------------------	||
+; --------------------	Get worksheet info																		||
+; --------------------------------------------------------------------------------------------------------------	||
+
 !+s::
 { 
-	global notifyGroupID
+	global notifyGroupID	; Declare the global variable within this function
+	fileExistsBool := false
+	writeOverBool := false
+	fileLen := 0
+	num := 0
+	; The procedure checks if the files already exist and contain data, and if so requests the 
+	; user to decide if the procedure should overwrite the information or save it. This will
+	; eventually be modified to be a setting which the user can set and modify at will,
+	; but for now it will prompt for an input.
+	While fileExistsBool = false && num <= 11 {
+		num := A_Index
+		try {
+			fileText := FileRead(xlPathArray[num])
+			fileLen := StrLen(fileText)
+		} catch Error as err {
+		}												; We don't need to take any action if there's an error.
+		If (fileLen >= 1) {
+			fileExistsBool := true
+		}
+	}
+	
+	If (fileExistsBool) {
+		response := InputBox('Submit "1" to write over the current files. Submit "2" to move'
+			' the current files to the archive directory. Submit "0" to cancel and end the script.', , , "2")
+		
+		If (response = "0") {
+			ExitApp
+		} else if (response = "2") {
+			if (archiveDirectory = "") {
+				newDirName := "Archive-files-" . A_Now
+				newDirPath := workingDir . "Archive/" . newDirName
+				try {
+					DirCreate newDirPath
+				} catch Error as err {
+					response := InputBox('There was an error creating the archive directory.'
+															' Submit "0" to cancel and end the script. Submit'
+															' anything else to write over the current files.', , , "1")
+					If (response = "0") {
+						ExitApp
+					} else {
+						writeOverBool := true
+					}
+				} else {
+					archiveDirectory := newDirPath
+				}
+			} else {
+				Loop 11 {
+					try {
+						FileMove(xlPathArray("A_Index"), newDirPath)
+					}
+				}
+			}
+		}
+	}
 	
   ; Initialize Excel COM object (or connect to an existing one)
     xl := ComObject("Excel.Application") 		; Note: ComObject("Excel.Application") is used to initialize 
@@ -160,10 +245,10 @@ CopyArray(array, callingProcedure := "") {
     wb := xl.workbooks.open(xlpath)				; case. For attaching to an existing Excel instance, use 
 	ws := wb.worksheets(xlSheet)					; ComObjActive("Excel.Application")
     ws.activate
+	
     ; Loop through each column
     Loop nCol
     {
-
         col := A_Index			; Essentially, col := the current value of nCol.
         columnData := ""		; Reset columnData
         Loop nRow		; Loop through every row in col
@@ -186,37 +271,45 @@ CopyArray(array, callingProcedure := "") {
 ; _________________________________________________________________________________________								
 
             row := A_Index
-			
             cellValue := ws.Cells(row + startRow - 1, col + startCol - 1).Value	
+			
+			; Occasionally, the group ID contained within the spreadsheet will have an erroneous
+			; character at the beginning or end. These next lines will identify it, remove it, and
+			; update notifyGroupID with the information for reporting.
 			firstChar := SubStr(cellValue, 1, 1)
 			strL := StrLen(cellValue)
 			lastChar := SubStr(cellValue, strL, 1)
-			
-			if (IsNumber(firstChar) = false)
-			{
+			if (IsNumber(firstChar) = false) {
 				tempStr := SubStr(cellValue, 2, strL - 1)
 				strL := StrLen(tempStr)
-				updateNotifyMsg(firstChar, row, cellValue)
+				updateGroupID(firstChar, row, cellValue)
 			} else {
 				tempStr := cellValue
 			}
-			
-			if (IsNumber(lastChar) = false)
-			{
+			if (IsNumber(lastChar) = false) {
 				finalStr := SubStr(tempStr, 1, strL - 1)
-				updateNotifyMsg(firstChar, row, cellValue)
+				updateNotifyMsg(lastChar, row, cellValue)
 			} else {
 				finalStr := tempStr
 			}
 			
+			; The procedure stores the entire column data into a string, and then it writes
+			; the string to the file. For the first column, the procedure also adds the row number.
+			; This is to make it easier to retrieve information from each text file by using the 
+			; group ID as the reference point.
 			
-			
-			
-            columnData := columnData . cellValue . "`n"		; Append cell data with newline
-
+			If (col = 1)  {
+				columnData := columnData . row . ":" . finalStr . "`n"
+			} else {
+				columnData := columnData . finalStr . "`n"	
+			}
 		}
-        ; Write the column data to a text file
-        FileAppend columnData, xlPathArray[col]		; Change path as needed
+        ; Each column is written to an individual text file. If the file exists, it is overwritten.
+		; The paths to the files are contained in xlPathArray. The column number is the index
+		; to get the path in the array.
+        columnFile := FileOpen(xlPathArray[col], "w")
+		columnFile.Write(columnData)
+		columnFile.Close
 
    }
     ; Clean up: close Excel workbook, quit Excel application
@@ -224,21 +317,22 @@ CopyArray(array, callingProcedure := "") {
     xl.Quit()
     xl := ""
 
-	if (notifyGroupID != "") 
-	{
+	; If there were any group IDs on the spreadsheet which contained non-numeric characters,
+	; write that information to log and send a message to the user.
+	If (notifyGroupID != "") {
 		if (logOpenBool = false) InitializeLog("GetWorksheetInfo")
-		FileAppend(notifyGroupID, logPath, "`n")
+		logFile.Write(notifyGroupID . "`n")
 		MsgBox(notifyGroupID)
 		notifyGroupID := ""
 	}
 }
 
 return
-; -------------||^ Get worksheet info ^||-------------------------------------------------------------
-; ---------------------------------------------------------------------------------------------------------------
-;         ||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
-;---------------------------------------------------------------------------------------------------------------
-;-------------||__Retrieve just the link__||----------------------------------------------------------
+
+; --------------------------------------------------------------------------------------------------------------	||
+; --------------------	Retrieve just the link																		||
+; --------------------------------------------------------------------------------------------------------------	||
+
 
 !+L::
 {
