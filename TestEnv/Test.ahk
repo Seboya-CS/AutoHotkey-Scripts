@@ -1,7 +1,7 @@
 #SingleInstance force
 #Requires AutoHotkey v2.0-a
 
-; Get script parameters from arguments
+; 
 xlPath := A_Args[1]
 xlSheet := A_Args[2]
 logPath := A_Args[3] 
@@ -14,22 +14,25 @@ xlTextFiles := A_Args[9]	; Comma-delimited list of paths for column data files.
 archiveDirectory := A_Args[10]	; Path to save old spreadsheet data or logs, if needed.
 															; Set this to "" to use the default archive directory.
 
-; ~~~++++++++++++++++++++++++++
-; 					Error codes								;++
-; 001 - Unable to initialize log					;++
-; 002 - Unable to copy array to file		;++
+; ~~~		Error codes		++++++++++++++++++++++;+
+; 																								;++
+; 001 - Unable to initialize log											;++
+; 002 - Unable to copy array to file								;++
 
-; ~~~++++++++++++++++++++++++;+
+; ~~~+++++++++++++++++++++++++++++++++++;+
 
 ; @@@		To dos		@@@+++++++++++++++++++++++++++++++++++++++++++++++++++++
+;
 ;	Complete the create archive / move files section, move it out of the current function its
 ;		in, and modify it to be a standalone function that takes parameters and returns a boolean
+;		Use global variables to share information about the script between functions.
 ;	Review the create archive / move files function and review InitializeLog(), and make a
 ;		decision if those should be broken down into their parts as a series of smaller functions.
 ;	Add in support for setting endRow and endCol to -1 to default to last used row/column
 ;	Create the user settings 
 ;	Standardize style
 ;	Switch absolute paths to relative paths in workingDir
+;
 ; @@@@@@@@@@@@++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
@@ -101,7 +104,8 @@ InitializeLog(callingProcedure := "") {    	; The `callingProcedure` variable is
         logFile.Write("First pass initialization success: " A_Now "`r`n")
         firstPassBool := false
     } Else {
-        logFile.Write("Calling procedure: " callingProcedure ". Process initialization: " A_Now "`r`n")
+        logFile.Write("Calling procedure: " callingProcedure ". Process initialization: " A_Now 
+								"`r`n")
     }
     logOpenBool := true
     return 1
@@ -121,10 +125,10 @@ UpdateNotifyMsg(uChar, uRow, uUnchangedID)
 	If (notifyGroupID= "") {
 		notifyGroupID :=  uChar . " was removed from row " . row . " . Group ID: " . uUnchangedID
 	} else {
-		notifyGroupID := { 
+		notifyGroupID := (
 										notifyGroupID . "`n" . uChar . " was removed from row " . uRow . ". Group"
 										" ID: " . uUnchangedID
-		}
+		)
 	}
 	return
 }
@@ -164,19 +168,25 @@ CopyArray(array, callingProcedure := "") {
     if !noLogBool {
         try {
             logFile := FileOpen(logPath, "a")
-			logFile.Write("Calling procedure: " callingProcedure ". Copying array to file: " A_Now "`r`n"
-            , "Array dimensions: Rows: " nRow ". Columns: " nCol ". `r`n")
+			logFile.Write("Calling procedure: " callingProcedure ". Copying array to file: " A_Now 
+									"`r`n" "Array dimensions: Rows: " nRow ". Columns: " nCol ". `r`n")
             for nRow, nCol, value in array {
                 file.Write("[" nRow "] [" nCol "] : " value  "`r`n")
             }
         }
         Catch as err {
-            MsgBox ("Error 002. There was an error copying the array to file. Logging is disbaled until restart.")
+            MsgBox ("Error 002. There was an error copying the array to file."
+							" Logging is disbaled until restart.")
             noLogBool := true
         }
     } 
     return
 }
+
+
+; ==========================================================================
+; ==========		PROCEDURES		===============================================
+; ==========================================================================
 
 ; --------------------------------------------------------------------------------------------------------------	||
 ; --------------------	Get worksheet info																		||
@@ -240,36 +250,20 @@ CopyArray(array, callingProcedure := "") {
 	}
 	
   ; Initialize Excel COM object (or connect to an existing one)
-    xl := ComObject("Excel.Application") 		; Note: ComObject("Excel.Application") is used to initialize 
+    xl := ComObject("Excel.Application") 		; Note: `ComObject("Excel.Application")` is used to initialize 
     xl.Visible := False											; a new instance of Excel, which is what we want in this
     wb := xl.workbooks.open(xlpath)				; case. For attaching to an existing Excel instance, use 
-	ws := wb.worksheets(xlSheet)					; ComObjActive("Excel.Application")
+	ws := wb.worksheets(xlSheet)					; `ComObjActive("Excel.Application")`
     ws.activate
 	
     ; Loop through each column
     Loop nCol
     {
-        col := A_Index			; Essentially, col := the current value of nCol.
+        col := A_Index			; `A_Index` = the current loop as an integer. Starts from 1.
         columnData := ""		; Reset columnData
         Loop nRow		; Loop through every row in col
         {
-; _________________________________________________________________________________________		
-;                      ---------------------------         Explanation box         ---------------------------									||
-;		In the next three lines, the script is being directed to read from the cells in the Excel		||
-;		spreadsheet. In the first line, `row := A_Index` is not necessary, unlike the preceding 	||
-;		`col := A_Index`. `A_Index` can only refer to the index value of a single loop, so for 		||
-;		nested loops it refers to the Index value of the currently active loop. I'm storing its 		||
-;		value into `row` simply for readability. In the second line, `ws.Cells` specifies what 		||
-;		type of object is being referenced, in this case, the object is a cell, which is a 					||
-;		"range" object in Microsoft's object model. `(row + startRow - 1, col + startCol -1)` 		||
-;		is an expression used to specify which cell in the spreadsheet is being referenced. 		||
-;		The format is (row, column). `row + startRow - 1` and `col + startCol - 1` are used to 	||
-;		allow for flexibility. Even though we know the starting row and column of the Excel 	||
-;		spreadsheet ahead of time, constructing the expression this way allows this script 		||
-;		to be reusable for other purposes too.																							||
-;                      ---------------------------          ---------------------------         ---------------------------									||
-; _________________________________________________________________________________________								
-
+							
             row := A_Index
             cellValue := ws.Cells(row + startRow - 1, col + startCol - 1).Value	
 			
@@ -294,9 +288,13 @@ CopyArray(array, callingProcedure := "") {
 			}
 			
 			; The procedure stores the entire column data into a string, and then it writes
-			; the string to the file. For the first column, the procedure also adds the row number.
-			; This is to make it easier to retrieve information from each text file by using the 
-			; group ID as the reference point.
+			; the string to the file. There are many different ways this can be done, each with pros
+			; and cons. For the purpose of this script, I decided to delimit each data entry with a new
+			; line, and include the row number at the beginning of the line. Storing the column data
+			; into a text file is beneficial because launching a new instance of Excel, or even keeping
+			; an instance running in the background, uses much more memory. Opening, parsing, 
+			; and closing a text file occurs quickly, and the system usage is low. A standard CSV
+			; format is another alternative. I decided against a CSV because
 			
 			If (col = 1)  {
 				columnData := columnData . row . ":" . finalStr . "`n"
