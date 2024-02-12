@@ -1,0 +1,244 @@
+#Requires AutoHotkey v2.0
+#SingleInstance force
+#Include "C:\Users\westn\OneDrive\OneDrive\all documents\Github repositories\Seboya\AutoHotkey-Scripts\Complete\lib"
+
+#SetWorkingDir "C:\Users\westn\OneDrive\OneDrive\all documents\Github repositories\Seboya\AutoHotkey-Scripts\AHK\Scripts\wip\The Office Worker's Toolkit"
+
+settingsPath := "settings.txt"
+nY := 0
+nX := 0
+nH :=500
+nW := 750
+xOffset := 20
+yOffset := 20
+hwnd := ""
+
+gTitle := "Template Manager"
+myGui := Gui("+MinSize600x400 +MaxSize900x600 +Resize -MaximizeBox", gTitle)
+myGui.BackColor := "000000"
+myGui.SetFont "cWhite s12 q4", "Roboto"
+
+; Menu bar
+fileMenu := Menu()
+fileMenu.Add "&Open", (*) => FileSelect()
+fileMenu.Add "New category", NewCategory
+fileMenu.Add "New template", NewTemplate
+fileMenu.Add "New link", NewLink
+fileMenu.Add "Edit", EditControls
+fileMenu.Add "Delete", DeleteControls
+fileMenu.Add "Display shortcuts", DisplayShortcuts
+fileMenu.Add "Exit", (*) => ExitApp()
+gMenuBar := MenuBar()
+gMenuBar.Add "&File", fileMenu
+myGui.MenuBar := gMenuBar
+
+myGui.Add("Tab3", "w730 h480 xm10 ym5", ["Primary", "General", "Email", "Credible", "Portal", "Other"])
+
+!t::
+{
+    ShowGui()
+}
+
+ShowGui()
+{
+    global hwnd
+    global nX
+    global nY
+    global nW
+    global nH
+    global gTitle
+    MouseGetPos(&nMx, &nMy)
+    nX := nMx + xOffset
+    nY := nMy + yOffset
+    myGui.Show("x" nX " y" nY " w" nW " h" nH)
+    WinWait(gTitle)
+    hwnd := WinGetID(gTitle)
+}
+
+NewCategory(*)
+{
+    MsgBox("New category")
+    return
+}
+
+NewTemplate(*)
+{
+    global settingsPath
+    oSet := OpenSettings()
+    oGset := GetGlobalSettings(oSet)
+    oPset := GetPrimarySettings(oSet)
+    oSet.Close()
+    c := 0
+    templateName := ""
+    while (!templateName && c <= 10) {
+        c++
+        templateName := InputBox("Enter the name of the new template", "New Template")
+    }
+    if (!templateName) {
+        return
+    }
+    templateString := ""
+    c := 0
+    while (!templateString && c <= 10) {
+        c++
+        templateString := InputBox("Enter the template string", "New Template")
+    }
+    if (!templateString) {
+        return
+    }
+    oPset[templateName] := templateString
+    oSet := FileOpen(settingsPath, "w")
+    newKey := "btn" templateName
+    newValue := templateString
+    
+    AddToSettings(newKey, newValue, oSet, tabName)
+
+}
+
+AddToSettings(key, newValue, oSet, tabName, delim := " : ")
+{
+    text := oSet.Read()
+    startPos := InStr(text, tabName " {")
+    endPos := InStr(text, "}", startPos)
+    sText := SubStr(text, startPos, endPos - startPos)
+    sPartOne := SubStr(text, 1, startPos - 1)
+    sPartTwo := SubStr(text, endPos + 1)
+    sText := StrReplace(sText, "}", key delim newValue "`n}")
+    text := sPartOne sText sPartTwo
+    oSet.Seek(0)
+    oSet.Write(text)
+    oSet.Close()
+    return
+}
+
+NewLink(*)
+{
+    MsgBox("New link")
+    return
+}
+
+EditControls(*)
+{
+    MsgBox("Edit controls")
+    return
+}
+
+DeleteControls(*)
+{
+    MsgBox("Delete controls")
+    return
+}
+
+DisplayShortcuts(*)
+{
+    MsgBox("Display shortcuts")
+    return
+}
+
+!WheelDown::
+{
+    if (hwnd && WinActive(hwnd)) {
+        Send "^+{Tab}"
+    } else {
+        Send "!{WheelDown}"
+    }
+}
+
+!WheelUp::
+{
+    if (hwnd && WinActive(hwnd)) {
+        Send "^{Tab}"
+    } else {
+        Send "!{WheelUp}"
+    }
+}
+
+OpenSettings()
+{
+    global settingsPath
+    global settings
+    try {
+        oSet := FileOpen(settingsPath, "rw")
+    } catch Error as err {
+        MsgBox("Error: " err.Message)
+        return
+    }
+    if (oSet) {
+        return OSet
+    } else {
+        return ""
+    }
+}
+
+GetGlobalSettings(oSet)
+{
+    global oGset := {}
+
+    text := oSet.Read()
+    globalPos := InStr(text, "global")
+    endPos := InStr(text, "}", globalPos)
+    sGtext := SubStr(text, globalPos, endPos - globalPos)
+    lineCount := CountSubstrings(sGtext, "`n")
+    for i, line in StrSplit(sGtext, "`n") {
+        if (i = 1) {
+            continue
+        }
+        key := SubStr(line, 1, InStr(line, ":") - 1)
+        kValue := SubStr(line, InStr(line, ":") + 1)
+        oGset[key] := kValue
+    }
+    oSet.close()
+    return oGset
+}
+
+GetPrimarySettings(oSet)
+{
+    global oPset := {}
+
+    text := oSet.Read()
+    primaryPos := InStr(text, "primary")
+    endPos := InStr(text, "}", primaryPos)
+    sPtext := SubStr(text, primaryPos, endPos - primaryPos)
+    lineCount := CountSubstrings(sPtext, "`n")
+    for i, line in StrSplit(sPtext, "`n") {
+        if (i = 1) {
+            continue
+        }
+        key := SubStr(line, 1, InStr(line, ":") - 1)
+        kValue := SubStr(line, InStr(line, ":") + 1)
+        oPset[key] := kValue
+    }
+    oSet.close()
+    return oPset
+}
+
+RetrieveKeyValuePair(key, sText, delim := " : ")
+{
+    keyPos := InStr(sText, key)
+    delimPos := InStr(sText, delim, keyPos)
+    dLen := StrLen(delim)
+    kValue := SubStr(sText, delimPos + dLen, InStr(sText, "`n", delimPos) - delimPos - dLen)
+    return kValue
+}
+
+WriteNewValue(key, newValue, oldValue, sText, delim := " : ")
+{
+    newLine := key delim newValue
+    oldLine := key delim oldValue
+    sText := StrReplace(sText, oldLine, newLine)
+    return sText
+}
+
+UpdateSettings(key, newValue, oldValue)
+{
+    global settingsPath
+    oSet := OpenSettings()
+    text := oSet.Read()
+    text := WriteNewValue(key, newValue, oldValue, text)
+    if (oSet) {
+        text := oSet.Read()
+        oSet.Seek(0)
+        oSet.Write(text)
+        oSet.Close()
+    }
+}
