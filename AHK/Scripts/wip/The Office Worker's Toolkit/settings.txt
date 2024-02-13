@@ -1,0 +1,61 @@
+Global {
+	mouseXOffset : 20
+	mouseYOffset : 20
+	windowWidth : 750
+	windowHeight : 500
+	windowTitle : Template Manager
+	backgroundColor : 000000
+	fontSize : 12
+	fontQuality : 4
+	font : Roboto
+	btnWidth : 20
+	btnHeight : 20
+	btnColor : cBlack
+	textLeftOrRight : Left
+	textColor : cWhite
+	textMaxWidth : 20
+	textMaxHeight : 20
+	padding : 5
+}
+
+Primary {
+	buttons : {
+	
+	}
+}
+
+General {
+	buttons : {
+	
+	}
+	
+}
+
+Email {
+	buttons : {
+	
+	}
+	
+}
+
+Credible {
+	buttons : {
+	
+	}
+	
+}
+
+Portal {
+	buttons : {
+	
+	}
+	
+}
+
+Other {
+	buttons : {
+	
+	}
+	
+}
+

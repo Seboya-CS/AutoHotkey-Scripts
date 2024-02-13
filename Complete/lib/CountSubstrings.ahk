@@ -1,0 +1,8 @@
+CountSubstrings(str, substr)
+{
+    nOrig := StrLen(str)
+    nMod := StrLen(StrReplace(str, substr, ""))
+    nSubLen := StrLen(substr)
+    nSubstrCount := (nOrig - nMod) / nSubLen
+    return nSubstrCount
+}

@@ -7,7 +7,7 @@
 myGui := Gui()
 myGui.BackColor := "0x8000FF"
 myGui.SetFont("s12 Norm c0xFFFFFF", "Calibri")
-EditvTxtSubmitTo := myGui.Add("Edit", "vvTxtSubmitTo x8 y32 w200 h137 +Multi", "`"C:\Users\nmw59\Downloads\Compressed\AutoHotkey_2.0.11\Easy-Auto-GUI-v1.7-for-AHK-v2.2.1\README.md``"C:\Users\nmw59\Downloads\Compressed\AutoHotkey_2.0.11\Easy-Auto-GUI-v1.7-for-AHK-v2.2.1\README.md`"")
+EditvTxtSubmitTo := myGui.Add("Edit", "vvTxtSubmitTo x8 y32 w200 h137 +Multi", "`"C:\Users\nmw59\Downloads\Compressed\AutoHotkey_2.0.11\Easy-Auto-GUI-v1.7-for-AHK-v2.2.1\README.md`"")
 EditvTxtSubmitTo.Opt("Background3C003C")
 myGui.Add("ListBox", "x8 y432 w133 h69", ["ListBox"])
 CheckBox1 := myGui.Add("CheckBox", "x8 y408 w72 h23", "CheckBox")
@@ -61,7 +61,6 @@ CreateToolbar() {
 OnToolbar(hWnd, Event, Text, Pos, Id) {
     If (Event != "Click") {
         Return
-    }
     } Else If (Text == "File") {
     } Else If (Text == "Tools") {
     }
