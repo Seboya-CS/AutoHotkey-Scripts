@@ -16,7 +16,7 @@ ShowMoveGUI() {
     }
     
     if (filesObj.Count = 0) {                                                   ; if no files are selected
-        MsgBox("No file selected!")                                             ; show a message
+        MsgBox("No file selected!")                                            	; show a message
         return
     }
 
@@ -37,12 +37,12 @@ ShowMoveGUI() {
     myGui.Show
 }
 
-btn1_Click(btn1, info) {
-    MoveToFolder("C:\Users\westn\OneDrive\OneDrive\Desktop\test1\")              ; move to the PA archive folder
+btn1_Click(btn1, info) {														; move to the PA archive folder
+    MoveToFolder("C:\Users\westn\OneDrive - SAGE COUNSELING INC\1. PA\archive\")
 }
 
-btn2_Click(btn2, info) {
-    MoveToFolder("C:\Users\westn\OneDrive\OneDrive\Desktop\test2\")              ; move to the General archive folder
+btn2_Click(btn2, info) {														; move to the General archive folder
+    MoveToFolder("C:\Users\westn\OneDrive - SAGE COUNSELING INC\General archive\")
 }
 
 MoveToFolder(targetFolder) {
@@ -55,14 +55,14 @@ MoveToFolder(targetFolder) {
     } catch Error as err {                                                      ; catch any errors
         ErrorHandler(err)                                                       ; handle the error
 }
-    myGui.Destroy                                                                 ; close the GUI
+    myGui.Destroy                                                               ; close the GUI
     return
 }
 
 GetTargetPath(file, targetFolder) {
     fileSplit := StrSplit(file.Path, "\")                                       ; split the file path
     fileName := fileSplit[fileSplit.Length]                                     ; get the file name
-    targetPath := CheckIfFileExists(targetFolder, fileName)                      ; create the target path
+    targetPath := CheckIfFileExists(targetFolder, fileName)                     ; create the target path
     return targetPath                                                           ; return the target path
 }
 
@@ -72,7 +72,7 @@ CheckIfFileExists(targetFolder, fileName) {
     targetPath := targetFolder fileName                                         ; create the target path
     while (FileExist(targetPath) && c <= 10) {                                  ; if the file already exists
         c++                                                                     ; increment the counter
-        response := MsgBox("File already exists: " targetPath "\n"
+        response := MsgBox("File already exists: " targetPath "`n"
             "Do you want to rename the file?", , 3)                             ; ask the user what to do
         if (response = "Yes") {                                                 ; if the user wants to rename the file
             inputObj := InputBox("Enter a new name for the file:", 
@@ -147,14 +147,5 @@ ErrorHandler(err) {
         errorMsg .= "`nExtra: " err.Extra                                       ; add the extra to the error message
     }
     MsgBox(errorMsg)                                                            ; show the error message
-    return
-}
-
-; Close the GUI when Esc is pressed
-Escape:: {
-    global myGui
-    if (myGui) {
-        myGui.Destroy
-    }
     return
 }
